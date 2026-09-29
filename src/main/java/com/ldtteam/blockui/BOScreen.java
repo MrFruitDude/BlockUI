@@ -57,7 +57,7 @@ public class BOScreen extends Screen
         {
             return;
         }
-        final WindowRenderState windowState = ms.minecraft.gameRenderer.getGameRenderState().windowRenderState;
+        final WindowRenderState windowState = ms.minecraft.gameRenderer.gameRenderState().windowRenderState;
 
         absoluteMouseX = mx;
         absoluteMouseY = my;
@@ -111,12 +111,12 @@ public class BOScreen extends Screen
             final double newMx = calcRelativeX(mx), newMy = calcRelativeY(my);
             final BOGuiGraphics target = new BOGuiGraphics(ms.minecraft, newMs, ms.guiRenderState, (int) newMx, (int) newMy);
 
-            if (window.hasBlurredBackground() && ms.minecraft.screen == this && target.guiRenderState.firstStratumAfterBlur == Integer.MAX_VALUE)
+            if (window.hasBlurredBackground() && ms.minecraft.gui.screen() == this && target.guiRenderState.firstStratumAfterBlur == Integer.MAX_VALUE)
             {
                 target.blurBeforeThisStratum();
             }
 
-            if (window.hasLightbox() && ms.minecraft.screen == this)
+            if (window.hasLightbox() && ms.minecraft.gui.screen() == this)
             {
                 UiRenderMacros.fillGradient(target, 0, 0, framebufferWidth, framebufferHeight, -1072689136, -804253680);
                 // super.extractTransparentBackground(target);
@@ -127,7 +127,7 @@ public class BOScreen extends Screen
 
             window.draw(target, newMx, newMy);
 
-            if (ms.minecraft.screen == this)
+            if (ms.minecraft.gui.screen() == this)
             {
                 int debugX = (int) (-x / renderScale) + 3;
                 if (Pane.debugging)
@@ -160,7 +160,7 @@ public class BOScreen extends Screen
 
     @Override // INLINE: partial inline - completely remove any extraction
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        this.minecraft.gui.extractDeferredSubtitles();
+        this.minecraft.gui.hud.extractDeferredSubtitles();
     }
 
     @Override

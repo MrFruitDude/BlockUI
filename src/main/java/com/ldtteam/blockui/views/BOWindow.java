@@ -171,8 +171,7 @@ public class BOWindow extends View
     }
 
     /**
-     * @return xml defining this window, or
-     * @see
+     * @return xml defining this window
      */
     public Identifier getXmlResourceLocation()
     {
@@ -184,7 +183,7 @@ public class BOWindow extends View
      */
     public void open()
     {
-        mc.submit(() -> mc.setScreen(screen));
+        mc.submit(() -> mc.gui.setScreen(screen));
     }
 
     /**
@@ -192,7 +191,7 @@ public class BOWindow extends View
      */
     public void openAsLayer()
     {
-        mc.submit(() -> mc.pushGuiLayer(screen));
+        mc.submit(() -> mc.gui.setScreen(screen));
     }
 
     /**
@@ -284,7 +283,7 @@ public class BOWindow extends View
      */
     public void close()
     {
-        Minecraft.getInstance().popGuiLayer();
+        Minecraft.getInstance().gui.setScreen(null);
     }
 
     /**

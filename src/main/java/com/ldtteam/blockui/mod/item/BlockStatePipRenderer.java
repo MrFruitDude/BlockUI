@@ -13,7 +13,6 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.render.pip.PictureInPictureRenderer;
-import net.minecraft.client.renderer.MultiBufferSource.BufferSource;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
 import net.minecraft.client.renderer.block.FluidRenderer;
@@ -21,8 +20,8 @@ import net.minecraft.client.renderer.block.FluidStateModelSet;
 import net.minecraft.client.renderer.block.model.BlockDisplayContext;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
-import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.cuboid.ItemTransform;
@@ -33,6 +32,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.fluid.CustomFluidRenderer;
 import net.neoforged.neoforge.client.model.pipeline.VertexConsumerWrapper;
 import org.jetbrains.annotations.Nullable;
@@ -52,11 +52,6 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
     private static final SingleBlockNeighborhood NEIGHBORHOOD = new SingleBlockNeighborhood();
     private @Nullable BlockStateRenderingData lastData = null;
 
-    public BlockStatePipRenderer(final BufferSource bufferSource)
-    {
-        super(bufferSource);
-    }
-
     @Override
     public Class<BlockStateRenderState> getRenderStateClass()
     {
@@ -64,7 +59,9 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
     }
 
     @Override
-    protected void renderToTexture(final BlockStateRenderState renderState, final PoseStack poseStack)
+    protected void renderToTexture(final BlockStateRenderState renderState,
+        final PoseStack poseStack,
+        final SubmitNodeCollector submitNodeCollector)
     {
         final BlockStateRenderingData data = renderState.data;
         lastData = data;
@@ -81,11 +78,9 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
         poseStack.last().mulPose(renderState.itemModel().firstLayer().localTransform);
 
         // render block and BE
-        final FeatureRenderDispatcher featureRenderDispatcher = Minecraft.getInstance().gameRenderer.getFeatureRenderDispatcher();
-
-        Minecraft.getInstance().gameRenderer.getLighting().setupFor(Lighting.Entry.ITEMS_FLAT);
+        Minecraft.getInstance().gameRenderer.lighting().setupFor(Lighting.Entry.ITEMS_FLAT);
         final int light = LightCoordsUtil.pack(15, 15);
-        renderState.blockModel.submit(poseStack, featureRenderDispatcher.getSubmitNodeStorage(), light, OverlayTexture.NO_OVERLAY, 0);
+        renderState.blockModel.submit(poseStack, submitNodeCollector, light, OverlayTexture.NO_OVERLAY, 0);
 
         if (renderState.blockEntityModel() != null)
         {
@@ -93,7 +88,7 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
             {
                 final var state = renderState.blockEntityModel();
                 final var renderer = Minecraft.getInstance().getBlockEntityRenderDispatcher().getRenderer(state);
-                renderer.submit(state, poseStack, featureRenderDispatcher.getSubmitNodeStorage(), null);
+                renderer.submit(state, poseStack, submitNodeCollector, null);
             }
             catch (final Exception e)
             {
@@ -113,9 +108,9 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
 
             // losely based on block rendering, cuz ChunkSectionLayer stupid
             // solid + cutout pass
-            featureRenderDispatcher.getSubmitNodeStorage()
+            submitNodeCollector
                 .submitCustomGeometry(poseStack,
-                    Sheets.cutoutBlockSheet(),
+                    Sheets.cutoutBlockItemSheet(),
                     (pose, buffer) -> renderFluid(data,
                         fluidState,
                         fluidRenderer,
@@ -124,9 +119,9 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
                         buffer,
                         pose));
             // translucent pass
-            featureRenderDispatcher.getSubmitNodeStorage()
+            submitNodeCollector
                 .submitCustomGeometry(poseStack,
-                    Sheets.translucentBlockSheet(),
+                    Sheets.translucentBlockItemSheet(),
                     (pose, buffer) -> renderFluid(data,
                         fluidState,
                         fluidRenderer,
@@ -137,7 +132,6 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
         }
 
         poseStack.popPose();
-        featureRenderDispatcher.renderAllFeatures();
     }
 
     private void renderFluid(final BlockStateRenderingData data,
@@ -205,12 +199,14 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
                 target.minecraft.getBlockModelResolver().update(blockModel, data.blockState(), BLOCK_DISPLAY_CONTEXT);
 
                 final ItemStackRenderState itemModel = new ItemStackRenderState();
-                // target.minecraft.getItemModelResolver()
-                // .updateForLiving(itemModel, itemStack, ItemDisplayContext.GUI, Minecraft.getInstance().player);
+                target.minecraft.getItemModelResolver()
+                    .updateForLiving(itemModel,
+                        itemStack,
+                        ItemDisplayContext.GUI,
+                        Minecraft.getInstance().player);
 
                 if (itemModel.firstLayer().itemTransform.equals(ItemTransform.NO_TRANSFORM) ||
-                    data.blockState().getRenderShape() == RenderShape.INVISIBLE ||
-                    true)
+                    data.blockState().getRenderShape() == RenderShape.INVISIBLE)
                 {
                     // well, some items are bit dumb
                     // TODO: port 26.1
@@ -236,7 +232,7 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
                             .useFakeLevelContext(data.blockState(), data.blockEntity(), target.minecraft.level, fakeLevel -> {
                                 final BlockEntityRenderState state = renderer.createRenderState();
                                 renderer.extractRenderState(data
-                                    .blockEntity(), state, 0, data.blockEntity().getBlockPos().getCenter(), null);
+                                    .blockEntity(), state, 0, Vec3.atCenterOf(data.blockEntity().getBlockPos()), null);
                                 return state;
                             });
                     }

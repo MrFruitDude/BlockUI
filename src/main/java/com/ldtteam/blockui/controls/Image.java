@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import java.util.Objects;
 
@@ -54,8 +55,10 @@ public class Image extends Pane
             vHeight = a.get(1);
         });
 
-        resourceLocation = params.getResource("source");
-        requireNonNull(resourceLocation, "Missing image texture (if dynamic in code use: minecraft:missingno)");
+        // Images without a source are populated by the owning window at runtime
+        // (for example Structurize's build-tool rotation indicator). Use the
+        // vanilla missing sprite until that dynamic value is supplied.
+        resourceLocation = params.getResource("source", MissingTextureAtlasSprite.getLocation());
     }
 
     /**
@@ -85,7 +88,7 @@ public class Image extends Pane
         {
             return;
         }
-        requireNonNull(resourceLocation, "Missing image texture");
+        requireNonNull(rl, "Missing image texture");
 
         this.resourceLocation = rl;
         this.u = u;
@@ -160,8 +163,12 @@ public class Image extends Pane
         // this is called by most of image classes -> parse our textures
         OutOfJarTexture.assertLoadedDefaultManagers(resLoc);
 
-        final TextureAtlas guiAtlas =
-            Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(BlockUI.NAMESPACE_TO_ATLAS_MAP.get(resLoc.getNamespace()));
+        // Mods may use ordinary textures without registering a custom GUI atlas.
+        // The old BlockUI atlas manager checked those against the vanilla GUI
+        // atlas before falling back to a direct texture blit; preserve that
+        // behavior instead of passing a null atlas id to AtlasManager.
+        final Identifier atlasId = BlockUI.NAMESPACE_TO_ATLAS_MAP.getOrDefault(resLoc.getNamespace(), AtlasIds.GUI);
+        final TextureAtlas guiAtlas = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(atlasId);
         final TextureAtlasSprite atlasSprite = guiAtlas.getSprite(resLoc);
 
         // unless we sprited missing texture pass to sprite blit (intentional object equality)

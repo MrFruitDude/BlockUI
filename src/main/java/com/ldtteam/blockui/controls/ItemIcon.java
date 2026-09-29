@@ -177,8 +177,13 @@ public class ItemIcon extends Pane
             if (onHover instanceof final AutomaticTooltip tooltip)
             {
                 tooltip.setTextOld(getModifiedItemStackTooltip());
-                tooltip.setStyle(itemStack.get(DataComponents.TOOLTIP_STYLE));
-                tooltip.setTooltipComponent(itemStack.getTooltipImage().orElse(null));
+                // Clearing an icon intentionally leaves the stack null.  The
+                // old port still dereferenced it while refreshing the
+                // tooltip, turning an empty/removed inventory slot into a
+                // client crash.  Keep the tooltip metadata empty with no
+                // stack and restore it when a stack is assigned again.
+                tooltip.setStyle(itemStack == null ? null : itemStack.get(DataComponents.TOOLTIP_STYLE));
+                tooltip.setTooltipComponent(itemStack == null ? null : itemStack.getTooltipImage().orElse(null));
             }
             tooltipUpdateScheduled = false;
         }
@@ -258,7 +263,7 @@ public class ItemIcon extends Pane
             tooltipFlags = tooltipFlags.asCreative();
         }
 
-        final List<Component> tooltipList = itemStack.getTooltipLines(TooltipContext.of(mc.level, mc.player), mc.player, ClientTooltipFlag.of(tooltipFlags));
+        final List<Component> tooltipList = itemStack.getTooltipLines(TooltipContext.of(mc.level), mc.player, ClientTooltipFlag.of(tooltipFlags));
         int nameOffset = 1;
 
         nameOffset = modifyTooltipName(tooltipList, tooltipFlags, nameOffset);

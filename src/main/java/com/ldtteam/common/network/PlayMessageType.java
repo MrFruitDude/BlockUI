@@ -220,7 +220,10 @@ public record PlayMessageType<T extends AbstractUnsidedPlayMessage>(Type<T> id,
     {
         if (client != null && server != null)
         {
-            registry.playBidirectional(id, codec, this::onBidirectional);
+            // NeoForge's three-argument bidirectional overload only installs the
+            // server handler; the client handler must be supplied explicitly (or
+            // registered later through RegisterClientPayloadHandlersEvent).
+            registry.playBidirectional(id, codec, this::onServer, this::onClient);
         }
         else if (client != null)
         {

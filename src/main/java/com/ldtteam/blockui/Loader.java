@@ -41,7 +41,10 @@ public final class Loader extends SimplePreparableReloadListener<Map<Identifier,
         register("scrollgroup", ScrollingGroup::new);
         register("list", ScrollingList::new);
         register("text", Text::new);
+        // Keep the legacy XML tags used by Structurize and MineColonies GUI resources.
+        register("label", Text::new);
         register("button", ButtonImage::new);
+        register("buttonimage", ButtonImage::new);
         register("toggle", ToggleButton::new);
         register("input", TextFieldVanilla::new);
         register("image", Image::new);

@@ -13,12 +13,15 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3x2fStack;
 import org.joml.Quaternionf;
@@ -59,15 +62,46 @@ public class EntityIcon<STATE extends EntityIcon.EntityIconState> extends Pane
         EntityRenderState ers = new EntityRenderState();
         ers.entityType = BuiltInRegistries.ENTITY_TYPE.get(entityName).get().value();
 
-        if (ers.entityType == EntityType.MANNEQUIN || ers.entityType == EntityType.PLAYER)
+        if (ers.entityType == EntityTypes.MANNEQUIN || ers.entityType == EntityTypes.PLAYER)
         {
-            requireNonNull(null, "Cannot load avatar entityType");
+            // AvatarRenderState is the client-side render-state counterpart for
+            // both player and mannequin entities.  The old port deliberately
+            // threw here, which made any GUI containing an avatar icon fail
+            // during construction (and left citizen/character panels empty).
+            // Use the default skin until a caller supplies a DynamicState with
+            // a live avatar entity; AvatarRenderState initializes that skin.
+            final EntityType<?> avatarType = ers.entityType;
             ers = new AvatarRenderState();
+            // Keep the declared type.  Mannequin icons use the mannequin
+            // renderer; forcing every avatar to PLAYER makes those icons use
+            // the wrong model/texture path.
+            ers.entityType = avatarType;
+            ((AvatarRenderState) ers).skin = DefaultPlayerSkin.getDefaultSkin();
+            ((AvatarRenderState) ers).showHat = true;
+            ((AvatarRenderState) ers).showJacket = true;
+            ((AvatarRenderState) ers).showLeftPants = true;
+            ((AvatarRenderState) ers).showRightPants = true;
+            ((AvatarRenderState) ers).showLeftSleeve = true;
+            ((AvatarRenderState) ers).showRightSleeve = true;
         }
         else
         {
-            // TODO: this doesn't allow player skins
-            ers = mc.getEntityRenderDispatcher().getRenderer(ers).createRenderState();
+            // Extract a real state from a temporary entity instead of returning
+            // the renderer's empty template.  The template contains only the
+            // entity type; texture, pose, equipment and animation fields are
+            // populated by EntityRenderer.extractRenderState and are required
+            // for correctly rendered mob icons.
+            final Entity previewEntity = mc.level == null
+                ? null
+                : ers.entityType.create(mc.level, EntitySpawnReason.COMMAND);
+            if (previewEntity != null)
+            {
+                ers = mc.getEntityRenderDispatcher().extractEntity(previewEntity, 1.0F);
+            }
+            else
+            {
+                ers = mc.getEntityRenderDispatcher().getRenderer(ers).createRenderState();
+            }
         }
 
         final CompoundTag ersDataRaw = params.getCompoundTag("renderState");

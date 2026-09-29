@@ -19,6 +19,9 @@ import java.util.function.Predicate;
  */
 public class FakeLevelChunkSection extends LevelChunkSection
 {
+    private static final int SECTION_WIDTH = 16;
+    private static final int SECTION_HEIGHT = 16;
+
     private final FakeLevel<?> fakeLevel;
     private final int yIdx;
     private final ChunkPos chunkPos;

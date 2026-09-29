@@ -253,11 +253,12 @@ public abstract class AbstractTextBuilder<P extends AbstractTextElement, R exten
                 return underlined();
 
             default:
-                if (!textFormatting.isColor())
+                final Integer formattingColor = formattingColor(textFormatting);
+                if (formattingColor == null)
                 {
                     throw new IllegalArgumentException("Unknown non-color textformatting.");
                 }
-                return color(textFormatting.getColor() == null ? defaultColor : textFormatting.getColor());
+                return color(formattingColor);
         }
     }
 
@@ -270,7 +271,8 @@ public abstract class AbstractTextBuilder<P extends AbstractTextElement, R exten
     public R colorVanillaCode(final char code)
     {
         final ChatFormatting tf = ChatFormatting.getByCode(code);
-        return color(tf == null || tf.getColor() == null ? defaultColor : tf.getColor());
+        final Integer tfColor = tf == null ? null : formattingColor(tf);
+        return color(tfColor == null ? defaultColor : tfColor);
     }
 
     /**
@@ -281,8 +283,9 @@ public abstract class AbstractTextBuilder<P extends AbstractTextElement, R exten
      */
     public R colorName(final String name)
     {
-        final ChatFormatting tf = ChatFormatting.getByName(name);
-        return color(Color.getByName(name, tf == null || tf.getColor() == null ? color : tf.getColor()));
+        final ChatFormatting tf = formattingByName(name);
+        final Integer tfColor = tf == null ? null : formattingColor(tf);
+        return color(Color.getByName(name, tfColor == null ? color : tfColor));
     }
 
     /**
@@ -310,7 +313,8 @@ public abstract class AbstractTextBuilder<P extends AbstractTextElement, R exten
     public R shadowColorVanillaCode(final char code)
     {
         final ChatFormatting tf = ChatFormatting.getByCode(code);
-        return shadowColor(tf == null || tf.getColor() == null ? null : tf.getColor());
+        final Integer tfColor = tf == null ? null : formattingColor(tf);
+        return shadowColor(tfColor);
     }
 
     /**
@@ -321,8 +325,9 @@ public abstract class AbstractTextBuilder<P extends AbstractTextElement, R exten
      */
     public R shadowColorName(final String name)
     {
-        final ChatFormatting tf = ChatFormatting.getByName(name);
-        return shadowColor(Color.getByName(name, tf == null || tf.getColor() == null ? shadowColor : tf.getColor()));
+        final ChatFormatting tf = formattingByName(name);
+        final Integer tfColor = tf == null ? null : formattingColor(tf);
+        return shadowColor(Color.getByName(name, tfColor == null ? shadowColor : tfColor));
     }
 
     /**
@@ -339,6 +344,53 @@ public abstract class AbstractTextBuilder<P extends AbstractTextElement, R exten
     {
         this.shadowColor = shadowColor;
         return thiz;
+    }
+
+    /**
+     * Resolves the vanilla color for the given formatting, or null for non-color formatting.
+     * MC 26.2 removed {@link ChatFormatting#isColor()} and {@link ChatFormatting#getColor()}.
+     */
+    private static Integer formattingColor(final ChatFormatting formatting)
+    {
+        switch (formatting)
+        {
+            case BLACK: return 0x000000;
+            case DARK_BLUE: return 0x0000AA;
+            case DARK_GREEN: return 0x00AA00;
+            case DARK_AQUA: return 0x00AAAA;
+            case DARK_RED: return 0xAA0000;
+            case DARK_PURPLE: return 0xAA00AA;
+            case GOLD: return 0xFFAA00;
+            case GRAY: return 0xAAAAAA;
+            case DARK_GRAY: return 0x555555;
+            case BLUE: return 0x5555FF;
+            case GREEN: return 0x55FF55;
+            case AQUA: return 0x55FFFF;
+            case RED: return 0xFF5555;
+            case LIGHT_PURPLE: return 0xFF55FF;
+            case YELLOW: return 0xFFFF55;
+            case WHITE: return 0xFFFFFF;
+            default: return null;
+        }
+    }
+
+    /**
+     * Resolves formatting by human-readable name. MC 26.2 removed {@link ChatFormatting#getByName(String)}.
+     */
+    private static ChatFormatting formattingByName(final String name)
+    {
+        if (name == null || name.isEmpty())
+        {
+            return null;
+        }
+        try
+        {
+            return ChatFormatting.valueOf(name.toUpperCase());
+        }
+        catch (final IllegalArgumentException e)
+        {
+            return null;
+        }
     }
 
     public R defaultShadowColor()
