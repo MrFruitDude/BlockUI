@@ -6,7 +6,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeResolver;
-import net.minecraft.world.level.biome.Climate.Sampler;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.PalettedContainer;
@@ -151,7 +150,7 @@ public class FakeLevelChunkSection extends LevelChunkSection
     }
 
     @Override
-    public void fillBiomesFromNoise(BiomeResolver p_282075_, Sampler p_283084_, int p_282310_, int p_281510_, int p_283057_)
+    public void fillBiomesFromNoise(BiomeResolver p_282075_, int p_282310_, int p_281510_, int p_283057_)
     {
         // Noop
     }

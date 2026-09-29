@@ -9,7 +9,7 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * Class which can be used to add text fields to a pane.
@@ -210,22 +210,22 @@ public class TextField extends Pane
     {
         switch (event.key())
         {
-            case GLFW.GLFW_KEY_BACKSPACE:
-            case GLFW.GLFW_KEY_DELETE:
+            case InputConstants.KEY_BACKSPACE:
+            case InputConstants.KEY_DELETE:
                 return handleDelete(event);
 
-            case GLFW.GLFW_KEY_HOME:
-            case GLFW.GLFW_KEY_END:
+            case InputConstants.KEY_HOME:
+            case InputConstants.KEY_END:
                 return handleHomeEnd(event);
 
-            case GLFW.GLFW_KEY_RIGHT:
-            case GLFW.GLFW_KEY_LEFT:
+            case InputConstants.KEY_RIGHT:
+            case InputConstants.KEY_LEFT:
                 return handleArrowKeys(event);
 
-            case GLFW.GLFW_KEY_TAB:
+            case InputConstants.KEY_TAB:
                 return handleTab();
 
-            case GLFW.GLFW_KEY_ESCAPE:
+            case InputConstants.KEY_ESCAPE:
                 if (selectionEnd != cursorPosition)
                 {
                     setSelectionEnd(cursorPosition);
@@ -257,7 +257,7 @@ public class TextField extends Pane
 
     private boolean handleArrowKeys(final KeyEvent event)
     {
-        final int direction = (event.key() == GLFW.GLFW_KEY_LEFT) ? -1 : 1;
+        final int direction = (event.key() == InputConstants.KEY_LEFT) ? -1 : 1;
 
 
         if (event.hasShiftDown())
@@ -291,7 +291,7 @@ public class TextField extends Pane
 
     private boolean handleHomeEnd(final KeyEvent event)
     {
-        final int position = (event.key() == GLFW.GLFW_KEY_HOME) ? 0 : text.length();
+        final int position = (event.key() == InputConstants.KEY_HOME) ? 0 : text.length();
 
         if (event.hasControlDownWithQuirk())
         {
@@ -306,7 +306,7 @@ public class TextField extends Pane
 
     private boolean handleDelete(final KeyEvent event)
     {
-        final int direction = (event.key() == GLFW.GLFW_KEY_BACKSPACE) ? -1 : 1;
+        final int direction = (event.key() == InputConstants.KEY_BACKSPACE) ? -1 : 1;
 
         if (event.hasControlDownWithQuirk())
         {

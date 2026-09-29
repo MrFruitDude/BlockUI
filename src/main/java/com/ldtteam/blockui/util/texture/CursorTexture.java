@@ -16,10 +16,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.metadata.MetadataSectionType;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWImage;
-import org.lwjgl.system.MemoryStack;
-import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.sdl.SDLMouse;
+import org.lwjgl.sdl.SDLPixels;
+import org.lwjgl.sdl.SDLSurface;
+import org.lwjgl.sdl.SDL_Surface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
@@ -34,7 +34,7 @@ public class CursorTexture extends ReloadableTexture
     private static final Logger LOGGER = LoggerFactory.getLogger(CursorTexture.class);
 
     private CursorMetadataSection cursorMetadata = CursorMetadataSection.EMPTY;
-    private long glfwCursorAddress = 0;
+    private long cursorHandle = 0;
 
     public CursorTexture(final Identifier resLoc)
     {
@@ -72,16 +72,19 @@ public class CursorTexture extends ReloadableTexture
 
             this.close();
 
-            try (var stack = MemoryStack.stackPush())
+            // SDL copies the pixels into the cursor, so the surface can be freed right away.
+            final SDL_Surface surface = SDLSurface.SDL_CreateSurfaceFrom(nativeImage.getWidth(),
+                nativeImage.getHeight(),
+                SDLPixels.SDL_PIXELFORMAT_ABGR8888,
+                nativeImage.getPixelBytes(),
+                nativeImage.getWidth() * 4);
+            if (surface != null)
             {
-                final GLFWImage image = GLFWImage.malloc(stack);
-                image.width(nativeImage.getWidth());
-                image.height(nativeImage.getHeight());
-                MemoryUtil.memPutAddress(image.address() + GLFWImage.PIXELS, nativeImage.getPointer());
-                glfwCursorAddress = GLFW.glfwCreateCursor(image, cursorMetadata.hotspotX, cursorMetadata.hotspotY);
+                cursorHandle = SDLMouse.SDL_CreateColorCursor(surface, cursorMetadata.hotspotX, cursorMetadata.hotspotY);
+                SDLSurface.SDL_DestroySurface(surface);
             }
 
-            if (glfwCursorAddress == 0)
+            if (cursorHandle == 0)
             {
                 LOGGER.error("Cannot create textured cursor for resource location: " + resourceId());
             }
@@ -97,18 +100,18 @@ public class CursorTexture extends ReloadableTexture
     @Override
     public void close()
     {
-        if (glfwCursorAddress != 0)
+        if (cursorHandle != 0)
         {
             RenderSystem.assertOnRenderThread();
-            GLFW.glfwDestroyCursor(glfwCursorAddress);
-            glfwCursorAddress = 0;
+            SDLMouse.SDL_DestroyCursor(cursorHandle);
+            cursorHandle = 0;
         }
         super.close();
     }
 
-    public long getGlfwCursorAddress()
+    public long getCursorHandle()
     {
-        return glfwCursorAddress;
+        return cursorHandle;
     }
 
     public static record CursorMetadataSection(int hotspotX, int hotspotY)

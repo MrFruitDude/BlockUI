@@ -27,7 +27,6 @@ import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.event.InputEvent.MouseScrollingEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.event.TagsUpdatedEvent;
-import org.lwjgl.glfw.GLFW;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -64,7 +63,7 @@ public class ClientEventSubscriber
     {
         if (Minecraft.getInstance().hasAltDown() && Minecraft.getInstance().hasControlDown() && Minecraft.getInstance().hasShiftDown())
         {
-            if (InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), GLFW.GLFW_KEY_X) &&
+            if (InputConstants.isKeyDown(InputConstants.KEY_X) &&
                 !(Minecraft.getInstance().gui.screen() instanceof final BOScreen screen &&
                     screen.getWindow().getXmlResourceLocation().getPath().equals("test_gui")))
             {

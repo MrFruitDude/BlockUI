@@ -6,13 +6,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData.BlockEntityTagOutput;
+import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.server.level.FullChunkStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeResolver;
-import net.minecraft.world.level.biome.Climate.Sampler;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -256,7 +255,7 @@ public class FakeChunk extends LevelChunk
     }
 
     @Override
-    public void replaceWithPacketData(FriendlyByteBuf p_187972_, Map<Types, long[]> p_187973_, Consumer<BlockEntityTagOutput> p_187974_)
+    public void replaceWithPacketData(int chunkX, int chunkZ, ClientboundLevelChunkPacketData chunkData)
     {
         // Noop
     }
@@ -294,7 +293,7 @@ public class FakeChunk extends LevelChunk
     }
 
     @Override
-    public void fillBiomesFromNoise(BiomeResolver p_187638_, Sampler p_187639_)
+    public void fillBiomesFromNoise(BiomeResolver p_187638_)
     {
         // Noop
     }

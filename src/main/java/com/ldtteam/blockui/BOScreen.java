@@ -18,7 +18,8 @@ import net.minecraft.network.chat.Component;
 import org.joml.Matrix2f;
 import org.joml.Matrix3x2f;
 import org.joml.Matrix4f;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
+import org.lwjgl.sdl.SDLScancode;
 
 import java.util.Objects;
 
@@ -168,7 +169,7 @@ public class BOScreen extends Screen
     {
         final int key = event.key();
         // keys without printable representation
-        if (key >= 0 && key <= GLFW.GLFW_KEY_LAST)
+        if (key >= 0 && key < SDLScancode.SDL_SCANCODE_COUNT)
         {
             try
             {
@@ -179,7 +180,7 @@ public class BOScreen extends Screen
                 final CrashReport crashReport = CrashReport.forThrowable(e, "KeyPressed event for BO screen");
                 final CrashReportCategory category = crashReport.addCategory("BO screen key event details");
                 category.setDetail("XML res loc", () -> window.getXmlResourceLocation().toString());
-                category.setDetail("GLFW key value", () -> Integer.toString(event.input()));
+                category.setDetail("key value", () -> Integer.toString(event.input()));
                 throw new ReportedException(crashReport);
             }
         }
@@ -218,13 +219,13 @@ public class BOScreen extends Screen
         final double my = calcRelativeY(event.y());
         try
         {
-            if (keyCode == GLFW.GLFW_MOUSE_BUTTON_LEFT)
+            if (keyCode == InputConstants.MOUSE_BUTTON_LEFT)
             {
                 // Adjust coordinate to origin of window
                 isMouseLeftDown = true;
                 return window.click(mx, my);
             }
-            else if (keyCode == GLFW.GLFW_MOUSE_BUTTON_RIGHT)
+            else if (keyCode == InputConstants.MOUSE_BUTTON_RIGHT)
             {
                 return window.rightClick(mx, my);
             }
@@ -234,7 +235,7 @@ public class BOScreen extends Screen
             final CrashReport crashReport = CrashReport.forThrowable(e, "MousePressed event for BO screen");
             final CrashReportCategory category = crashReport.addCategory("BO screen mouse event details");
             category.setDetail("XML res loc", () -> Objects.toString(window.getXmlResourceLocation()));
-            category.setDetail("GLFW mouse key value", () -> Integer.toString(keyCode));
+            category.setDetail("mouse key value", () -> Integer.toString(keyCode));
             throw new ReportedException(crashReport);
         }
         return false;
@@ -281,7 +282,7 @@ public class BOScreen extends Screen
     public boolean mouseReleased(final MouseButtonEvent event)
     {
         final int keyCode = event.button();
-        if (keyCode == GLFW.GLFW_MOUSE_BUTTON_LEFT)
+        if (keyCode == InputConstants.MOUSE_BUTTON_LEFT)
         {
             // Adjust coordinate to origin of window
             isMouseLeftDown = false;
@@ -294,7 +295,7 @@ public class BOScreen extends Screen
                 final CrashReport crashReport = CrashReport.forThrowable(e, "MouseReleased event for BO screen");
                 final CrashReportCategory category = crashReport.addCategory("BO screen mouse event details");
                 category.setDetail("XML res loc", () -> window.getXmlResourceLocation().toString());
-                category.setDetail("GLFW mouse key value", () -> Integer.toString(keyCode));
+                category.setDetail("mouse key value", () -> Integer.toString(keyCode));
                 throw new ReportedException(crashReport);
             }
         }

@@ -294,6 +294,12 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
         }
 
         @Override
+        public VertexConsumer setUv3(final float u, final float v)
+        {
+            return this;
+        }
+
+        @Override
         public VertexConsumer setNormal(final float x, final float y, final float z)
         {
             return this;

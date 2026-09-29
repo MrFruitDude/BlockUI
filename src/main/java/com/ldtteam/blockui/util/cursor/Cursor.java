@@ -4,14 +4,13 @@ import com.ldtteam.blockui.mod.BlockUI;
 import com.ldtteam.blockui.util.SafeError;
 import com.ldtteam.blockui.util.texture.CursorTexture;
 import com.ldtteam.blockui.util.texture.IsOurTexture;
-import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.platform.cursor.CursorType;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
+import org.lwjgl.sdl.SDLMouse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,8 +31,8 @@ public class Cursor
     public static final CursorType HAND = CursorTypes.POINTING_HAND;
     public static final CursorType HORIZONTAL_RESIZE = CursorTypes.RESIZE_EW;
     public static final CursorType VERTICAL_RESIZE = CursorTypes.RESIZE_NS;
-    public static final CursorType RESIZE_NWSE = CursorType.createStandardCursor(GLFW.GLFW_RESIZE_NWSE_CURSOR, "resize_nwse", Cursor.DEFAULT);
-    public static final CursorType RESIZE_NESW = CursorType.createStandardCursor(GLFW.GLFW_RESIZE_NESW_CURSOR, "resize_nesw", Cursor.DEFAULT);
+    public static final CursorType RESIZE_NWSE = CursorType.createStandardCursor(SDLMouse.SDL_SYSTEM_CURSOR_NWSE_RESIZE, "resize_nwse", Cursor.DEFAULT);
+    public static final CursorType RESIZE_NESW = CursorType.createStandardCursor(SDLMouse.SDL_SYSTEM_CURSOR_NESW_RESIZE, "resize_nesw", Cursor.DEFAULT);
     public static final CursorType RESIZE = CursorTypes.RESIZE_ALL;
     public static final CursorType NOT_ALLOWED = CursorTypes.NOT_ALLOWED;
 
@@ -84,7 +83,7 @@ public class Cursor
         }
 
         @Override
-        public void select(final Window window)
+        public void select()
         {
             final AbstractTexture texture = Minecraft.getInstance().getTextureManager().getTexture(resLoc);
 
@@ -93,7 +92,7 @@ public class Cursor
                 throw new IllegalArgumentException("Did you forget to load CursorTexture (or create CursorType) for: " + resLoc);
             }
 
-            GLFW.glfwSetCursor(window.handle(), cursorTexture.getGlfwCursorAddress());
+            SDLMouse.SDL_SetCursor(cursorTexture.getCursorHandle());
         }
     }
 }
