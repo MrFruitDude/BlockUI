@@ -17,12 +17,19 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Inspired by {@link SimpleTexture}
  */
 public class OutOfJarTexture extends ReloadableTexture
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OutOfJarTexture.class);
+    private static final Set<String> WARNED_ANIMATED = ConcurrentHashMap.newKeySet();
+
     protected final OutOfJarResourceLocation resourceLocation;
 
     public OutOfJarTexture(final OutOfJarResourceLocation resourceLocation)
@@ -34,13 +41,20 @@ public class OutOfJarTexture extends ReloadableTexture
     @Override
     public TextureContents loadContents(final ResourceManager resourceManager) throws IOException
     {
-        final Resource resource = OutOfJarResourceLocation.getResourceHandle(resourceLocation, resourceManager);
+        return readContents(OutOfJarResourceLocation.getResourceHandle(resourceLocation, resourceManager));
+    }
 
-        // redirect to sprite
+    static TextureContents readContents(final Resource resource) throws IOException
+    {
+        // Since 26.1 an animated sprite can't be loaded without a texture atlas. Degrade to the missing texture instead of
+        // throwing: TextureManager#reload propagates any exception from here and fails the whole resource reload.
         if (resource.metadata().getSection(AnimationMetadataSection.TYPE).isPresent())
         {
-            throw new UnsupportedOperationException("Trying to load sprite texture without texture atlas isn't supporsed since 26.1");
-            // ^ throwing anything else but IO crashes client, but we need to take missing texture path (so this object dies properly)
+            if (WARNED_ANIMATED.add(resource.sourcePackId()))
+            {
+                LOGGER.warn("Animated out-of-jar textures are not supported since 26.1, using missing texture: {}", resource.sourcePackId());
+            }
+            return TextureContents.createMissing();
         }
 
         final TextureMetadataSection textureMeta = resource.metadata().getSection(TextureMetadataSection.TYPE).orElse(null);
