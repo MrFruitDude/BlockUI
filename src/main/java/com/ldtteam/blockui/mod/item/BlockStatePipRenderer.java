@@ -25,7 +25,13 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.cuboid.ItemTransform;
+import net.minecraft.util.Util;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -39,10 +45,12 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3x2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Predicate;
 
-// TODO: port 21.6 this is super extra overkill perf-wise - lags when rendering more than 100 instances
-// but logically is most correct version (given sanity)
+// TODO: port 21.6 this is super extra overkill perf-wise (one texture per icon)
+// but logically is most correct version (given sanity); textures are reused across frames, see BlockStateRenderState#equals
 // ideally we would just grab the model geometry and render it as normal textures
 // and not this texture PiP non-sense that costs way to much for simple block render
 public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRenderState>
@@ -50,7 +58,12 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
     // TODO: Static instance should be fine since gui rendering is on single thread
     private static final BlockDisplayContext BLOCK_DISPLAY_CONTEXT = BlockDisplayContext.create();
     private static final SingleBlockNeighborhood NEIGHBORHOOD = new SingleBlockNeighborhood();
+    private static final Direction[] DIRECTIONS = {null, Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST};
     private @Nullable BlockStateRenderingData lastData = null;
+    /** Whether lastData's picture changes over time (animated sprite, fluid, block entity renderer). */
+    private boolean lastDataAnimated = false;
+    /** Animation tick (50 ms, the client tick that advances sprite animations) the texture was last drawn in. */
+    private long lastRenderTick = Long.MIN_VALUE;
 
     @Override
     public Class<BlockStateRenderState> getRenderStateClass()
@@ -64,7 +77,12 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
         final SubmitNodeCollector submitNodeCollector)
     {
         final BlockStateRenderingData data = renderState.data;
+        if (lastData != data)
+        {
+            lastDataAnimated = isAnimated(renderState);
+        }
         lastData = data;
+        lastRenderTick = animationTick();
 
         // prepare pose just like itemStack rendering would do
         // INLINE: notes for poseStack comes roughly from OversizedItemRenderer vanilla PiP
@@ -170,7 +188,38 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
     @Override
     protected boolean textureIsReadyToBlit(final BlockStateRenderState renderState)
     {
-        return renderState.data == lastData;
+        // reused across frames; animated icons are redrawn once per tick so they keep animating like 1.21
+        return renderState.data == lastData && (!lastDataAnimated || lastRenderTick == animationTick());
+    }
+
+    private static long animationTick()
+    {
+        return Util.getMillis() / 50;
+    }
+
+    private static boolean isAnimated(final BlockStateRenderState renderState)
+    {
+        final BlockState blockState = renderState.data().blockState();
+        if (!blockState.getFluidState().isEmpty() || renderState.blockEntityModel() != null)
+        {
+            return true;
+        }
+        final List<BlockStateModelPart> parts = new ArrayList<>();
+        Minecraft.getInstance().getModelManager().getBlockStateModelSet().get(blockState).collectParts(RandomSource.create(42L), parts);
+        for (final BlockStateModelPart part : parts)
+        {
+            for (final Direction direction : DIRECTIONS)
+            {
+                for (final BakedQuad quad : part.getQuads(direction))
+                {
+                    if (quad.materialInfo().sprite().contents().isAnimated())
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     public record BlockStateRenderState(Matrix3x2f pose,
@@ -189,6 +238,27 @@ public class BlockStatePipRenderer extends PictureInPictureRenderer<BlockStateRe
         public static final int SCALE_FACTOR = 4;
         public static final int RENDER_SIZE_I = ItemIcon.DEFAULT_ITEMSTACK_SIZE_I * SCALE_FACTOR;
         public static final float RENDER_SIZE_F = (float) RENDER_SIZE_I;
+
+        /**
+         * NeoForge pools one PiP renderer per state and hands last frame's renderer back only to an EQUAL state.
+         * The model render states are rebuilt every frame, so record equality never matched and every icon was
+         * re-rendered into its texture every frame. Equality therefore leaves them out and compares the drawn data
+         * by identity (the same check {@link BlockStatePipRenderer#textureIsReadyToBlit} uses); position, size and
+         * clipping stay in so two icons on screen never share a key.
+         */
+        @Override
+        public boolean equals(final Object o)
+        {
+            return o instanceof final BlockStateRenderState other && data == other.data && x0 == other.x0 && x1 == other.x1 &&
+                y0 == other.y0 && y1 == other.y1 && Float.compare(scale, other.scale) == 0 && pose.equals(other.pose) &&
+                java.util.Objects.equals(bounds, other.bounds) && java.util.Objects.equals(scissorArea, other.scissorArea);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return java.util.Objects.hash(System.identityHashCode(data), x0, x1, y0, y1, scale, pose, bounds, scissorArea);
+        }
 
         public static void submit(final BOGuiGraphics target, final BlockStateRenderingData data, final ItemStack itemStack)
         {
