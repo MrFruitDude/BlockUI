@@ -235,15 +235,6 @@ public record PlayMessageType<T extends AbstractUnsidedPlayMessage>(Type<T> id,
         }
     }
 
-    private void onBidirectional(final T payload, final IPayloadContext context)
-    {
-        switch (context.flow())
-        {
-            case CLIENTBOUND -> onClient(payload, context);
-            case SERVERBOUND -> onServer(payload, context);
-        }
-    }
-
     private void onClient(final T payload, final IPayloadContext context)
     {
         final Player player = context.player();
