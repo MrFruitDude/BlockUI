@@ -58,15 +58,15 @@ public class Configurations<CLIENT extends AbstractConfiguration,
     {
         final List<AbstractConfiguration> configs = new ArrayList<>();
 
-        final Pair<CLIENT, ModConfig> cli = createConfig(clientFactory, Type.CLIENT, modContainer, configs);
+        final Pair<CLIENT, ModConfig> cli = createConfig(clientFactory, Type.CLIENT, modContainer, modBus, configs);
         client = cli.getRight();
         clientConfig = cli.getLeft();
 
-        final Pair<SERVER, ModConfig> ser = createConfig(serverFactory, Type.SYNCED, modContainer, configs);
+        final Pair<SERVER, ModConfig> ser = createConfig(serverFactory, Type.SYNCED, modContainer, modBus, configs);
         server = ser.getRight();
         serverConfig = ser.getLeft();
 
-        final Pair<COMMON, ModConfig> com = createConfig(commonFactory, Type.LOCAL, modContainer, configs);
+        final Pair<COMMON, ModConfig> com = createConfig(commonFactory, Type.LOCAL, modContainer, modBus, configs);
         common = com.getRight();
         commonConfig = com.getLeft();
 
@@ -85,6 +85,7 @@ public class Configurations<CLIENT extends AbstractConfiguration,
     private <T extends AbstractConfiguration> Pair<T, ModConfig> createConfig(final Function<Builder, T> factory,
         final Type type,
         final ModContainer modContainer,
+        final IEventBus modBus,
         final List<AbstractConfiguration> configs)
     {
         // dont create client classes on server to avoid class loading issues
@@ -97,6 +98,7 @@ public class Configurations<CLIENT extends AbstractConfiguration,
         // modContainer.registerConfig(type, builtConfig.getRight());
         // TODO: replace in the future with the return of registerConfig above
         final ModConfig modConfig = ConfigTracker.INSTANCE.registerConfig(type, builtConfig.getRight(), modContainer);
+        LegacyConfigMigration.migrate(modConfig, modBus);
         final T config = builtConfig.getLeft();
 
         configs.add(config);
