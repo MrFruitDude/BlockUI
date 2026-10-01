@@ -191,7 +191,7 @@ public class BOWindow extends View
      */
     public void openAsLayer()
     {
-        mc.submit(() -> mc.gui.setScreen(screen));
+        mc.submit(() -> mc.gui.pushScreenLayer(screen));
     }
 
     /**
@@ -283,7 +283,7 @@ public class BOWindow extends View
      */
     public void close()
     {
-        Minecraft.getInstance().gui.setScreen(null);
+        Minecraft.getInstance().gui.popScreenLayer();
     }
 
     /**
