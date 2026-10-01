@@ -62,11 +62,11 @@ public class Configurations<CLIENT extends AbstractConfiguration,
         client = cli.getRight();
         clientConfig = cli.getLeft();
 
-        final Pair<SERVER, ModConfig> ser = createConfig(serverFactory, Type.SERVER, modContainer, configs);
+        final Pair<SERVER, ModConfig> ser = createConfig(serverFactory, Type.SYNCED, modContainer, configs);
         server = ser.getRight();
         serverConfig = ser.getLeft();
 
-        final Pair<COMMON, ModConfig> com = createConfig(commonFactory, Type.COMMON, modContainer, configs);
+        final Pair<COMMON, ModConfig> com = createConfig(commonFactory, Type.LOCAL, modContainer, configs);
         common = com.getRight();
         commonConfig = com.getLeft();
 
