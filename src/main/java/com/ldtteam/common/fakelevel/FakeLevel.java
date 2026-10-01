@@ -106,6 +106,7 @@ public class FakeLevel<SOURCE extends IFakeLevelBlockGetter> extends Level
     protected final ModelDataManager modelDataManager;
     protected FakeLevelEntityGetterAdapter levelEntityGetter = FakeLevelEntityGetterAdapter.EMPTY;
     protected List<PartEntity<?>> dragonParts = List.of();
+    private int nextEntityId = 1;
     // TODO: this is currently manually filled by class user - ideally if not filled yet this should get constructed from levelSource
     // manually
     protected Map<BlockPos, BlockEntity> blockEntities = Collections.emptyMap();
@@ -231,6 +232,17 @@ public class FakeLevel<SOURCE extends IFakeLevelBlockGetter> extends Level
     {
         levelEntityGetter = entities.isEmpty() ? FakeLevelEntityGetterAdapter.EMPTY : FakeLevelEntityGetterAdapter.ofEntities(entities);
         dragonParts = entities.stream().filter(Entity::isMultipartEntity).map(Entity::getParts).flatMap(Arrays::stream).toList();
+    }
+
+    /**
+     * Since 26.x every entity needs a non-zero id before it is registered with an
+     * {@link net.minecraft.world.level.entity.EntityLookup}. Client/server levels allocate ids, the base Level
+     * returns zero, so entities created in this fake level (e.g. blueprint entities) get ids here.
+     */
+    @Override
+    public int getNextEntityId()
+    {
+        return nextEntityId++;
     }
 
     // ========================================
