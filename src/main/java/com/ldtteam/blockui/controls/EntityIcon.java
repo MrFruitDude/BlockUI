@@ -264,6 +264,9 @@ public class EntityIcon<STATE extends EntityIcon.EntityIconState> extends Pane
 
         private final E entity;
         private ERS entityRenderState;
+        /** Renderer that created {@link #entityRenderState}; renderers are rebuilt on resource reload. */
+        @Nullable
+        private ER entityRenderStateOwner;
         private final BiConsumer<E, ERS> entityRenderStateAdjuster;
 
         public DynamicState(final E entity, @Nullable final BiConsumer<E, ERS> entityRenderStateAdjuster)
@@ -287,7 +290,15 @@ public class EntityIcon<STATE extends EntityIcon.EntityIconState> extends Pane
         public EntityRenderState entityRenderState(final EntityRenderDispatcher entityRenderDispatcher)
         {
             final ER renderer = (ER) entityRenderDispatcher.getRenderer(entity);
-            entityRenderState = renderer.createRenderState(entity, 1.0f);
+            if (entityRenderState == null || entityRenderStateOwner != renderer)
+            {
+                // Allocate once per renderer, then re-extract into the same state each frame. extractRenderState
+                // overwrites every field (and resizes/clears its lists), and GuiEntityRenderer never caches by state.
+                entityRenderState = renderer.createRenderState();
+                entityRenderStateOwner = renderer;
+            }
+            // Partial tick 1.0 like vanilla InventoryScreen#renderEntityInInventory.
+            renderer.extractRenderState(entity, entityRenderState, 1.0f);
             entityRenderStateAdjuster.accept(entity, entityRenderState);
             return entityRenderState;
         }
