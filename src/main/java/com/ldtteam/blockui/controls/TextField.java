@@ -1,12 +1,15 @@
 package com.ldtteam.blockui.controls;
 
 import com.ldtteam.blockui.BOGuiGraphics;
+import com.ldtteam.blockui.BOScreen;
 import com.ldtteam.blockui.Pane;
 import com.ldtteam.blockui.PaneParams;
 import com.ldtteam.blockui.util.cursor.Cursor;
 import com.ldtteam.blockui.views.View;
+import net.minecraft.client.gui.components.IMEPreeditOverlay;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.PreeditEvent;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -34,6 +37,8 @@ public class TextField extends Pane
     protected            int     scrollOffset            = 0;
     protected            int     selectionEnd            = 0;
     protected            int     cursorBlinkCounter      = 0;
+    @Nullable
+    private              IMEPreeditOverlay preeditOverlay = null;
 
     /**
      * Simple public constructor to instantiate.
@@ -238,7 +243,20 @@ public class TextField extends Pane
     @Override
     public boolean onCharactedEvent(final CharacterEvent event)
     {
+        preeditOverlay = null;
         writeText(Character.toString(event.codepoint()));
+        return true;
+    }
+
+    /**
+     * Handle native IME composition updates while this field owns BlockUI focus.
+     *
+     * @param event the current composition, or null when composition ends.
+     * @return true when this field owns the composition event.
+     */
+    public boolean onPreeditEvent(@Nullable final PreeditEvent event)
+    {
+        preeditOverlay = event == null ? null : new IMEPreeditOverlay(event, mc.font, 10);
         return true;
     }
 
@@ -325,6 +343,17 @@ public class TextField extends Pane
     {
         setCursorPosition(text.length());
         cursorBlinkCounter = 0;
+        if (window != null && mc.gui.screen() == window.getScreen())
+        {
+            mc.textInputManager().startTextInput(this);
+        }
+    }
+
+    @Override
+    public void onFocusLost()
+    {
+        preeditOverlay = null;
+        mc.textInputManager().stopTextInput(this);
     }
 
     /**
@@ -409,6 +438,22 @@ public class TextField extends Pane
             }
 
             target.textHighlight(selectionStartX, drawY - 1, selectionEndX, drawY + 1 + mc.font.lineHeight, true);
+        }
+
+        if (isFocus() && window != null)
+        {
+            final BOScreen screen = window.getScreen();
+            if (mc.gui.screen() == screen)
+            {
+                final TextInputArea area = TextInputArea.from(target.pose(), cursorX, drawY - 1, cursorX + 1,
+                    drawY + 1 + mc.font.lineHeight, screen.getVanillaGuiScale());
+                mc.textInputManager().setTextInputArea(area.left(), area.top(), area.right(), area.bottom());
+                if (preeditOverlay != null)
+                {
+                    preeditOverlay.updateInputPosition(area.left(), area.top());
+                    target.setPreeditOverlay(preeditOverlay);
+                }
+            }
         }
     }
 

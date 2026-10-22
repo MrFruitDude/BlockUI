@@ -1,5 +1,6 @@
 package com.ldtteam.blockui;
 
+import com.ldtteam.blockui.controls.TextField;
 import com.ldtteam.blockui.views.BOWindow;
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.CrashReport;
@@ -207,8 +208,11 @@ public class BOScreen extends Screen
     @Override
     public boolean preeditUpdated(final PreeditEvent event)
     {
-        // TODO: implement this in text field
-        return true;
+        if (Pane.getFocus() instanceof final TextField textField && textField.getWindow() == window)
+        {
+            return textField.onPreeditEvent(event);
+        }
+        return super.preeditUpdated(event);
     }
 
     @Override
@@ -362,6 +366,7 @@ public class BOScreen extends Screen
         }
         finally
         {
+            // Clearing the focused TextField also stops its owner-scoped native text input.
             BOWindow.clearFocus();
         }
     }
