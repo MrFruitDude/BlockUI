@@ -1,6 +1,7 @@
 package com.ldtteam.blockui;
 
 import com.ldtteam.blockui.controls.TextField;
+import net.minecraft.client.gui.components.IMEPreeditOverlay;
 import com.ldtteam.blockui.views.BOWindow;
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.CrashReport;
@@ -128,6 +129,16 @@ public class BOScreen extends Screen
             newMs.scale((float) renderScale, (float) renderScale);
 
             window.draw(target, newMx, newMy);
+
+            // Vanilla only draws the IME overlay from the screen's own graphics, not from our nested target.
+            if (ms.minecraft.gui.screen() == this && Pane.getFocus() instanceof final TextField textField && textField.getWindow() == window)
+            {
+                final IMEPreeditOverlay preedit = textField.getPreeditOverlay();
+                if (preedit != null)
+                {
+                    ms.setPreeditOverlay(preedit);
+                }
+            }
 
             if (ms.minecraft.gui.screen() == this)
             {

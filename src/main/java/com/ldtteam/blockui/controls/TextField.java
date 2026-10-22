@@ -1,7 +1,6 @@
 package com.ldtteam.blockui.controls;
 
 import com.ldtteam.blockui.BOGuiGraphics;
-import com.ldtteam.blockui.BOScreen;
 import com.ldtteam.blockui.Pane;
 import com.ldtteam.blockui.PaneParams;
 import com.ldtteam.blockui.util.cursor.Cursor;
@@ -440,21 +439,31 @@ public class TextField extends Pane
             target.textHighlight(selectionStartX, drawY - 1, selectionEndX, drawY + 1 + mc.font.lineHeight, true);
         }
 
-        if (isFocus() && window != null)
+        if (isFocus() && window != null && mc.gui.screen() == window.getScreen())
         {
-            final BOScreen screen = window.getScreen();
-            if (mc.gui.screen() == screen)
+            // Re-assert every frame: a vanilla layer closing above this screen can stop text input while we keep focus.
+            mc.textInputManager().startTextInput(this);
+            final TextInputArea area = TextInputArea.from(target.pose(), cursorX, drawY - 1, cursorX + 1, drawY + 1 + mc.font.lineHeight);
+            if (preeditOverlay == null)
             {
-                final TextInputArea area = TextInputArea.from(target.pose(), cursorX, drawY - 1, cursorX + 1,
-                    drawY + 1 + mc.font.lineHeight, screen.getVanillaGuiScale());
                 mc.textInputManager().setTextInputArea(area.left(), area.top(), area.right(), area.bottom());
-                if (preeditOverlay != null)
-                {
-                    preeditOverlay.updateInputPosition(area.left(), area.top());
-                    target.setPreeditOverlay(preeditOverlay);
-                }
+            }
+            else
+            {
+                preeditOverlay.updateInputPosition(area.left(), area.top());
             }
         }
+    }
+
+    /**
+     * The IME composition overlay to draw on the outer vanilla graphics, positioned at the caret in GUI coordinates.
+     *
+     * @return the overlay, or null when nothing is being composed.
+     */
+    @Nullable
+    public IMEPreeditOverlay getPreeditOverlay()
+    {
+        return isFocus() ? preeditOverlay : null;
     }
 
     @Override
