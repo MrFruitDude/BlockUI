@@ -3,6 +3,7 @@ package com.ldtteam.blockui.views;
 import com.ldtteam.blockui.BOGuiGraphics;
 import com.ldtteam.blockui.BOScreen;
 import com.ldtteam.blockui.Loader;
+import com.ldtteam.blockui.Pane;
 import com.ldtteam.blockui.PaneParams;
 import com.ldtteam.blockui.Parsers;
 import com.mojang.blaze3d.platform.Window;
@@ -228,12 +229,20 @@ public class BOWindow extends View
     @Override
     public boolean onCharactedEvent(final CharacterEvent event)
     {
-        if (getFocus() != null && getFocus().onCharactedEvent(event))
-        {
-            return true;
-        }
+        final Pane focus = getOwnFocus();
+        return focus != null && focus.onCharactedEvent(event);
+    }
 
-        return false;
+    /**
+     * The focused pane, if it belongs to this window. Focus is shared by all windows, so a layer
+     * opened over a window with a focused text field must not route input to that hidden field.
+     *
+     * @return the focused pane of this window, or null.
+     */
+    protected Pane getOwnFocus()
+    {
+        final Pane focus = getFocus();
+        return focus != null && focus.getWindow() == this ? focus : null;
     }
 
     /**
@@ -247,7 +256,8 @@ public class BOWindow extends View
     @Override
     public boolean onKeyEvent(final KeyEvent event)
     {
-        if (getFocus() != null && getFocus().onKeyEvent(event))
+        final Pane focus = getOwnFocus();
+        if (focus != null && focus.onKeyEvent(event))
         {
             return true;
         }
@@ -265,7 +275,7 @@ public class BOWindow extends View
     {
         if (event.isEscape())
         {
-            if (getFocus() != null)
+            if (getOwnFocus() != null)
             {
                 clearFocus();
             }
