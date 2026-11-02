@@ -194,7 +194,7 @@ public abstract class AbstractTextElement extends Pane
     protected void recalcTextRendering()
     {
         preparedPalette = TextPalette.get();
-        preparedRoot = getWindow();
+        preparedRoot = paletteRoot();
         if (textScale <= 0.0d || textWidth < 1 || textHeight < 1 || isTextEmpty())
         {
             preparedText = Collections.emptyList();
@@ -228,36 +228,55 @@ public abstract class AbstractTextElement extends Pane
     }
 
     /**
-     * Rebuilds the text with the palette's Style colours; returns the same component when no colour changes.
+     * The window the palette is asked for. A tooltip draws on the vanilla tooltip background, not on the window's page, so it keeps its colours (no window,
+     * which a palette maps as identity).
      */
-    private static MutableComponent recolor(final MutableComponent textBlock, final TextPalette palette, @Nullable final Pane root)
+    @Nullable
+    public static Pane paletteRoot(final Class<?> type, @Nullable final Pane window)
     {
+        return Tooltip.class.isAssignableFrom(type) ? null : window;
+    }
+
+    @Nullable
+    private Pane paletteRoot()
+    {
+        return paletteRoot(getClass(), getWindow());
+    }
+
+    /**
+     * Rebuilds the text with the palette's Style colours; returns the same component, without building anything, when no colour changes.
+     * Legacy section-sign colour codes are decoded later by the font and are not seen here.
+     */
+    static MutableComponent recolor(final MutableComponent textBlock, final TextPalette palette, @Nullable final Pane root)
+    {
+        final Optional<Boolean> changes = textBlock.visit((style, part) -> {
+            final TextColor color = style.getColor();
+            return color != null && mapRgb(color, palette, root) != (color.getValue() & 0xFFFFFF) ? Optional.of(Boolean.TRUE) : Optional.empty();
+        }, Style.EMPTY);
+        if (changes.isEmpty())
+        {
+            return textBlock;
+        }
         final MutableComponent recolored = Component.empty();
-        final boolean[] changed = {false};
         textBlock.visit((style, part) -> {
             final TextColor color = style.getColor();
-            Style mapped = style;
-            if (color != null)
-            {
-                final int rgb = color.getValue() & 0xFFFFFF;
-                final int to = palette.map(0xFF000000 | rgb, root) & 0xFFFFFF;
-                if (to != rgb)
-                {
-                    mapped = style.withColor(to);
-                    changed[0] = true;
-                }
-            }
-            recolored.append(Component.literal(part).setStyle(mapped));
+            final int to = color == null ? 0 : mapRgb(color, palette, root);
+            recolored.append(Component.literal(part).setStyle(color == null || to == (color.getValue() & 0xFFFFFF) ? style : style.withColor(to)));
             return Optional.empty();
         }, Style.EMPTY);
-        return changed[0] ? recolored : textBlock;
+        return recolored;
+    }
+
+    private static int mapRgb(final TextColor color, final TextPalette palette, @Nullable final Pane root)
+    {
+        return palette.map(0xFF000000 | (color.getValue() & 0xFFFFFF), root) & 0xFFFFFF;
     }
 
     public void recalcPreparedTextBox()
     {
         // a palette installed, removed or a window attached since the text was laid out: lay it out again with the current colours
         final TextPalette palette = TextPalette.get();
-        if (palette != preparedPalette || (palette != TextPalette.IDENTITY && preparedRoot != getWindow()))
+        if (palette != preparedPalette || (palette != TextPalette.IDENTITY && preparedRoot != paletteRoot()))
         {
             recalcTextRendering();
             if (preparedText.isEmpty())
@@ -327,7 +346,7 @@ public abstract class AbstractTextElement extends Pane
         final TextPalette palette = TextPalette.get();
         if (palette != TextPalette.IDENTITY)
         {
-            color = palette.map(color, getWindow());
+            color = palette.map(color, paletteRoot());
         }
 
         int offsetX = textOffsetX;
