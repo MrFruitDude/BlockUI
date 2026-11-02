@@ -6,6 +6,7 @@ import com.ldtteam.blockui.Loader;
 import com.ldtteam.blockui.Pane;
 import com.ldtteam.blockui.PaneParams;
 import com.ldtteam.blockui.Parsers;
+import com.ldtteam.blockui.util.records.Pos2i.MutablePos2i;
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.input.CharacterEvent;
@@ -292,6 +293,16 @@ public class BOWindow extends View
     public boolean isHosted()
     {
         return ownScreen != null;
+    }
+
+    /**
+     * Positions accumulated up to the window are in the window's own space (DropDownList places its list inside the window from them), so a hosted window
+     * leaves out the host's offset; not hosted, it adds its position as every view does.
+     */
+    @Override
+    protected MutablePos2i accumulatePosition(final MutablePos2i accumulator)
+    {
+        return isHosted() ? accumulator : super.accumulatePosition(accumulator);
     }
 
     /**
