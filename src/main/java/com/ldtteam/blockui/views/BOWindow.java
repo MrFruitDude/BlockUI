@@ -67,6 +67,8 @@ public class BOWindow extends View
      */
     private BOScreen ownScreen = null;
     private WindowRenderType ownRenderType = null;
+    private int ownX = 0;
+    private int ownY = 0;
 
     /**
      * The render scale the host set, used by {@link WindowRenderType#HOSTED}.
@@ -255,6 +257,8 @@ public class BOWindow extends View
         {
             ownScreen = screen;
             ownRenderType = windowRenderType;
+            ownX = x;
+            ownY = y;
         }
         screen = host;
         windowRenderType = WindowRenderType.HOSTED;
@@ -271,7 +275,7 @@ public class BOWindow extends View
     }
 
     /**
-     * Undo {@link #host}: the window's own screen, render type and an offset of zero. Nothing happens when the window is not hosted.
+     * Undo {@link #host}: the window's own screen, render type and the position it had before it was hosted. Nothing happens when the window is not hosted.
      */
     public void unhost()
     {
@@ -284,7 +288,7 @@ public class BOWindow extends View
         ownScreen = null;
         ownRenderType = null;
         hostScale = 1.0d;
-        setPosition(0, 0);
+        setPosition(ownX, ownY);
     }
 
     /**
