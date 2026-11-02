@@ -57,6 +57,22 @@ public class BOWindow extends View
     protected Identifier xmlResourceLocation;
 
     /**
+     * Seam for a host screen (Ore UI pass S4). Null by default, so every open behaves as before.
+     */
+    private static OpenHook openHook = null;
+
+    /**
+     * The window's own screen and render type while it is hosted, restored by {@link #unhost()}; null while not hosted.
+     */
+    private BOScreen ownScreen = null;
+    private WindowRenderType ownRenderType = null;
+
+    /**
+     * The render scale the host set, used by {@link WindowRenderType#HOSTED}.
+     */
+    private double hostScale = 1.0d;
+
+    /**
      * Create a window from an xml file.
      *
      * @param resource Identifier to get file from.
@@ -184,6 +200,10 @@ public class BOWindow extends View
      */
     public void open()
     {
+        if (openHook != null && openHook.open(this, false))
+        {
+            return;
+        }
         mc.submit(() -> mc.gui.setScreen(screen));
     }
 
@@ -192,7 +212,108 @@ public class BOWindow extends View
      */
     public void openAsLayer()
     {
+        if (openHook != null && openHook.open(this, true))
+        {
+            return;
+        }
         mc.submit(() -> mc.gui.pushScreenLayer(screen));
+    }
+
+    /**
+     * Set the open hook (Ore UI pass S4). It is asked before every {@link #open()} and {@link #openAsLayer()}; null (the default) passes every
+     * open through unchanged.
+     *
+     * @param hook the hook, or null to remove it.
+     */
+    public static void setOpenHook(final OpenHook hook)
+    {
+        openHook = hook;
+    }
+
+    /**
+     * @return the open hook, or null when none is set.
+     */
+    public static OpenHook getOpenHook()
+    {
+        return openHook;
+    }
+
+    /**
+     * Host this window in another screen: the host screen becomes the window's screen (text fields, tooltips and ticks read it), the render type
+     * becomes {@link WindowRenderType#HOSTED} with the given scale, and the window is moved by the offset (BlockUI pixels) from the centred position
+     * the screen gives it. {@link #unhost()} restores the window's own screen, render type and position.
+     *
+     * @param host    the host screen.
+     * @param scale   render scale, framebuffer pixels per BlockUI pixel.
+     * @param offsetX x offset from the centred position, in BlockUI pixels.
+     * @param offsetY y offset from the centred position, in BlockUI pixels.
+     */
+    public void host(final BOScreen host, final double scale, final int offsetX, final int offsetY)
+    {
+        if (ownScreen == null)
+        {
+            ownScreen = screen;
+            ownRenderType = windowRenderType;
+        }
+        screen = host;
+        windowRenderType = WindowRenderType.HOSTED;
+        setHostPlacement(scale, offsetX, offsetY);
+    }
+
+    /**
+     * Move a hosted window: new scale and offset (see {@link #host}).
+     */
+    public void setHostPlacement(final double scale, final int offsetX, final int offsetY)
+    {
+        hostScale = scale;
+        setPosition(offsetX, offsetY);
+    }
+
+    /**
+     * Undo {@link #host}: the window's own screen, render type and an offset of zero. Nothing happens when the window is not hosted.
+     */
+    public void unhost()
+    {
+        if (ownScreen == null)
+        {
+            return;
+        }
+        screen = ownScreen;
+        windowRenderType = ownRenderType;
+        ownScreen = null;
+        ownRenderType = null;
+        hostScale = 1.0d;
+        setPosition(0, 0);
+    }
+
+    /**
+     * @return true while the window is hosted by another screen.
+     */
+    public boolean isHosted()
+    {
+        return ownScreen != null;
+    }
+
+    /**
+     * @return the render scale the host set (1 when not hosted).
+     */
+    public double hostScale(final Window mcWindow)
+    {
+        return hostScale;
+    }
+
+    /**
+     * Asked before a window opens (Ore UI pass S4).
+     */
+    @FunctionalInterface
+    public interface OpenHook
+    {
+        /**
+         * @param window  the window that is opening.
+         * @param asLayer true for {@link #openAsLayer()}, false for {@link #open()}.
+         * @return true when the hook opened the window itself; false lets the window open as usual.
+         */
+        boolean open(BOWindow window, boolean asLayer);
     }
 
     /**
@@ -362,7 +483,11 @@ public class BOWindow extends View
             final double fs_vanilla = FULLSCREEN_VANILLA.calcRenderScale(mcWindow, window);
             final int userScale = window.mc.options.guiScale().get();
             return fs_vanilla < 1.0d ? fs_vanilla : Math.min(Math.floor(fs_vanilla), userScale == 0 ? Double.MAX_VALUE : userScale);
-        });
+        }),
+        /**
+         * set by a host screen through {@link BOWindow#host}, Ore UI pass S4
+         */
+        HOSTED((mcWindow, window) -> window.hostScale(mcWindow));
 
         private final ToDoubleBiFunction<Window, BOWindow> renderScaleCalculator;
 
