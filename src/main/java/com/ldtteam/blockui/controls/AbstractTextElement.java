@@ -12,14 +12,11 @@ import com.ldtteam.blockui.util.ToggleableTextComponent.FormattedToggleableCharS
 import org.joml.Matrix3x2fStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
 import net.minecraft.util.FormattedCharSequence;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -194,7 +191,7 @@ public abstract class AbstractTextElement extends Pane
     protected void recalcTextRendering()
     {
         preparedPalette = TextPalette.get();
-        preparedRoot = paletteRoot();
+        preparedRoot = preparedPalette == TextPalette.IDENTITY ? null : paletteRoot();
         if (textScale <= 0.0d || textWidth < 1 || textHeight < 1 || isTextEmpty())
         {
             preparedText = Collections.emptyList();
@@ -223,53 +220,14 @@ public abstract class AbstractTextElement extends Pane
         else
         {
             final TextPalette palette = preparedPalette;
-            return mc.font.split(palette == TextPalette.IDENTITY ? textBlock : recolor(textBlock, palette, preparedRoot), maxWidth).stream();
+            return mc.font.split(palette == TextPalette.IDENTITY ? textBlock : TextPaletteSupport.recolor(textBlock, palette, preparedRoot), maxWidth).stream();
         }
-    }
-
-    /**
-     * The window the palette is asked for. A tooltip draws on the vanilla tooltip background, not on the window's page, so it keeps its colours (no window,
-     * which a palette maps as identity).
-     */
-    @Nullable
-    public static Pane paletteRoot(final Class<?> type, @Nullable final Pane window)
-    {
-        return Tooltip.class.isAssignableFrom(type) ? null : window;
     }
 
     @Nullable
     private Pane paletteRoot()
     {
-        return paletteRoot(getClass(), getWindow());
-    }
-
-    /**
-     * Rebuilds the text with the palette's Style colours; returns the same component, without building anything, when no colour changes.
-     * Legacy section-sign colour codes are decoded later by the font and are not seen here.
-     */
-    static MutableComponent recolor(final MutableComponent textBlock, final TextPalette palette, @Nullable final Pane root)
-    {
-        final Optional<Boolean> changes = textBlock.visit((style, part) -> {
-            final TextColor color = style.getColor();
-            return color != null && mapRgb(color, palette, root) != (color.getValue() & 0xFFFFFF) ? Optional.of(Boolean.TRUE) : Optional.empty();
-        }, Style.EMPTY);
-        if (changes.isEmpty())
-        {
-            return textBlock;
-        }
-        final MutableComponent recolored = Component.empty();
-        textBlock.visit((style, part) -> {
-            final TextColor color = style.getColor();
-            final int to = color == null ? 0 : mapRgb(color, palette, root);
-            recolored.append(Component.literal(part).setStyle(color == null || to == (color.getValue() & 0xFFFFFF) ? style : style.withColor(to)));
-            return Optional.empty();
-        }, Style.EMPTY);
-        return recolored;
-    }
-
-    private static int mapRgb(final TextColor color, final TextPalette palette, @Nullable final Pane root)
-    {
-        return palette.map(0xFF000000 | (color.getValue() & 0xFFFFFF), root) & 0xFFFFFF;
+        return TextPaletteSupport.root(getClass(), getWindow());
     }
 
     public void recalcPreparedTextBox()
