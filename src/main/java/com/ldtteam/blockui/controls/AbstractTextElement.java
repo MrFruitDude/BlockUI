@@ -4,6 +4,7 @@ import com.ldtteam.blockui.Alignment;
 import com.ldtteam.blockui.BOGuiGraphics;
 import com.ldtteam.blockui.Pane;
 import com.ldtteam.blockui.PaneParams;
+import com.ldtteam.blockui.TextPalette;
 import com.ldtteam.blockui.util.SpacerTextComponent;
 import com.ldtteam.blockui.util.SpacerTextComponent.FormattedSpacerComponent;
 import com.ldtteam.blockui.util.ToggleableTextComponent;
@@ -11,11 +12,14 @@ import com.ldtteam.blockui.util.ToggleableTextComponent.FormattedToggleableCharS
 import org.joml.Matrix3x2fStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.util.FormattedCharSequence;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -93,6 +97,10 @@ public abstract class AbstractTextElement extends Pane
     protected int textOffsetY = 0;
     protected int textWidth = width;
     protected int textHeight = height;
+
+    // the text palette and window the prepared text was coloured for (see TextPalette)
+    private TextPalette preparedPalette = TextPalette.IDENTITY;
+    private Pane preparedRoot;
 
     /**
      * Creates a stock text element using the programmed defaults
@@ -185,6 +193,8 @@ public abstract class AbstractTextElement extends Pane
      */
     protected void recalcTextRendering()
     {
+        preparedPalette = TextPalette.get();
+        preparedRoot = getWindow();
         if (textScale <= 0.0d || textWidth < 1 || textHeight < 1 || isTextEmpty())
         {
             preparedText = Collections.emptyList();
@@ -212,12 +222,50 @@ public abstract class AbstractTextElement extends Pane
         }
         else
         {
-            return mc.font.split(textBlock, maxWidth).stream();
+            final TextPalette palette = preparedPalette;
+            return mc.font.split(palette == TextPalette.IDENTITY ? textBlock : recolor(textBlock, palette, preparedRoot), maxWidth).stream();
         }
+    }
+
+    /**
+     * Rebuilds the text with the palette's Style colours; returns the same component when no colour changes.
+     */
+    private static MutableComponent recolor(final MutableComponent textBlock, final TextPalette palette, @Nullable final Pane root)
+    {
+        final MutableComponent recolored = Component.empty();
+        final boolean[] changed = {false};
+        textBlock.visit((style, part) -> {
+            final TextColor color = style.getColor();
+            Style mapped = style;
+            if (color != null)
+            {
+                final int rgb = color.getValue() & 0xFFFFFF;
+                final int to = palette.map(0xFF000000 | rgb, root) & 0xFFFFFF;
+                if (to != rgb)
+                {
+                    mapped = style.withColor(to);
+                    changed[0] = true;
+                }
+            }
+            recolored.append(Component.literal(part).setStyle(mapped));
+            return Optional.empty();
+        }, Style.EMPTY);
+        return changed[0] ? recolored : textBlock;
     }
 
     public void recalcPreparedTextBox()
     {
+        // a palette installed, removed or a window attached since the text was laid out: lay it out again with the current colours
+        final TextPalette palette = TextPalette.get();
+        if (palette != preparedPalette || (palette != TextPalette.IDENTITY && preparedRoot != getWindow()))
+        {
+            recalcTextRendering();
+            if (preparedText.isEmpty())
+            {
+                return;
+            }
+        }
+
         if (textWrap)
         {
             // + Math.ceil(textScale) / textScale is to negate last pixel of vanilla font rendering
@@ -275,7 +323,12 @@ public abstract class AbstractTextElement extends Pane
     {
         final Matrix3x2fStack ms = target.pose();
 
-        final int color = isEnabled() ? (wasCursorInPane ? textHoverColor : textColor) : textDisabledColor;
+        int color = isEnabled() ? (wasCursorInPane ? textHoverColor : textColor) : textDisabledColor;
+        final TextPalette palette = TextPalette.get();
+        if (palette != TextPalette.IDENTITY)
+        {
+            color = palette.map(color, getWindow());
+        }
 
         int offsetX = textOffsetX;
         int offsetY = textOffsetY;
