@@ -25,7 +25,7 @@ public final class TextPaletteSupport
      * (no window, which a palette maps as identity).
      */
     @Nullable
-    public static Pane root(final Class<?> type, @Nullable final Pane window)
+    public static <W> W root(final Class<?> type, @Nullable final W window)
     {
         return Tooltip.class.isAssignableFrom(type) ? null : window;
     }
